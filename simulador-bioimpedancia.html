@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Riesgo Eléctrico</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0c10;
+            --panel: #0f1318;
+            --border: #1e2630;
+            --accent: #00e5ff;
+            --danger: #ff3d3d;
+            --warn: #ffb300;
+            --ok: #00e676;
+            --text: #c8d4e0;
+            --muted: #4a5a6a;
+            --mono: 'Share Tech Mono', monospace;
+            --display: 'Barlow Condensed', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--display);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 1px;
+            background: var(--accent);
+            box-shadow: 0 0 12px var(--accent);
+        }
+
+        .badge {
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            letter-spacing: 0.15em;
+            color: var(--accent);
+            text-transform: uppercase;
+            background: rgba(0,229,255,0.08);
+            border: 1px solid rgba(0,229,255,0.2);
+            display: inline-block;
+            padding: 0.2em 0.8em;
+            border-radius: 2px;
+            margin-bottom: 0.75rem;
+        }
+
+        h1 {
+            font-size: clamp(1.8rem, 4vw, 3rem);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #e8f0f8;
+            line-height: 1.1;
+        }
+
+        h1 span { color: var(--accent); }
+
+        .subtitle {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 0.5rem;
+            letter-spacing: 0.08em;
+        }
+
+        /* GRID LAYOUT */
+        .grid {
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1024px) {
+            .grid { grid-template-columns: 1fr 1fr; }
+            .panel-body { order: -1; grid-column: 1 / -1; }
+        }
+
+        @media (max-width: 640px) {
+            .grid { grid-template-columns: 1fr; }
+            .panel-body { order: 0; }
+        }
+
+        /* PANELS */
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0.4;
+        }
+
+        .panel-title {
+            font-size: 0.7rem;
+            font-family: var(--mono);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .panel-title::before {
+            content: '';
+            display: inline-block;
+            width: 6px; height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        /* CONTROLS */
+        .field { margin-bottom: 1.25rem; }
+
+        .field label {
+            display: block;
+            font-size: 0.7rem;
+            font-family: var(--mono);
+            color: var(--muted);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 0.4rem;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border);
+            border-radius: 2px;
+            color: var(--accent);
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 0.75rem;
+            outline: none;
+            transition: border-color 0.2s;
+            appearance: none;
+        }
+
+        select:focus, input[type="number"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(0,229,255,0.1);
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 1rem 0;
+        }
+
+        .section-label {
+            font-size: 0.65rem;
+            font-family: var(--mono);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--accent);
+            opacity: 0.7;
+            margin-bottom: 1rem;
+        }
+
+        /* SLIDERS */
+        .slider-group { margin-bottom: 1rem; }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.4rem;
+        }
+
+        .slider-label {
+            font-size: 0.65rem;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .slider-val {
+            font-size: 0.65rem;
+            font-family: var(--mono);
+            color: var(--accent);
+        }
+
+        .slider-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .slider-sub { font-size: 0.55rem; color: var(--muted); font-family: var(--mono); width: 12px; }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px; height: 12px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 6px var(--accent);
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+        /* BODY SVG */
+        .panel-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .svg-wrap {
+            width: 100%;
+            max-width: 260px;
+            margin: 0 auto;
+        }
+
+        #body-svg {
+            width: 100%;
+            height: auto;
+            filter: drop-shadow(0 0 20px rgba(0,229,255,0.05));
+        }
+
+        .seg { transition: all 0.3s ease; }
+        .seg-idle { stroke: #1e3a4a; stroke-width: 3; fill: none; }
+        .seg-active {
+            stroke-width: 4;
+            fill: none;
+            animation: pulse-seg 0.8s ease-in-out infinite alternate;
+        }
+        .seg-active-safe { stroke: var(--ok); filter: drop-shadow(0 0 4px var(--ok)); }
+        .seg-active-warn { stroke: var(--warn); filter: drop-shadow(0 0 6px var(--warn)); }
+        .seg-active-danger { stroke: var(--danger); filter: drop-shadow(0 0 8px var(--danger)); }
+
+        @keyframes pulse-seg {
+            from { opacity: 0.7; stroke-width: 3; }
+            to { opacity: 1; stroke-width: 5; }
+        }
+
+        .torso-idle { fill: #0f1d28; stroke: #1e3a4a; stroke-width: 1.5; }
+        .torso-active { fill: #1a0a0a; stroke: var(--danger); stroke-width: 2; animation: pulse-seg 0.8s ease-in-out infinite alternate; }
+
+        /* METERS */
+        .meters {
+            width: 100%;
+            margin-top: 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .meter-box {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        .meter-label {
+            font-size: 0.6rem;
+            font-family: var(--mono);
+            color: var(--muted);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 0.3rem;
+        }
+
+        .meter-val {
+            font-family: var(--mono);
+            font-size: 1.4rem;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+
+        .meter-val.r { color: var(--accent); }
+        .meter-val.i { color: var(--danger); }
+
+        /* RESISTANCE TABLE */
+        .res-table { margin-top: 1rem; }
+        .res-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.7rem;
+        }
+        .res-row-name { font-family: var(--mono); color: var(--muted); }
+        .res-row-val { font-family: var(--mono); color: var(--text); }
+        .res-row.active .res-row-name { color: var(--accent); }
+        .res-row.active .res-row-val { color: var(--accent); }
+
+        /* DIAGNOSIS */
+        .diag-card {
+            padding: 1rem;
+            border-radius: 3px;
+            border: 1px solid;
+            margin-bottom: 1.25rem;
+            text-align: center;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .diag-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.06;
+            pointer-events: none;
+        }
+
+        .diag-icon { font-size: 2rem; display: block; margin-bottom: 0.4rem; }
+        .diag-title { font-size: 1.2rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .diag-desc { font-size: 0.72rem; font-family: var(--mono); margin-top: 0.3rem; line-height: 1.5; }
+
+        .diag-ok { border-color: var(--ok); color: var(--ok); background: rgba(0,230,118,0.05); }
+        .diag-warn { border-color: var(--warn); color: var(--warn); background: rgba(255,179,0,0.05); }
+        .diag-orange { border-color: #ff6d00; color: #ff6d00; background: rgba(255,109,0,0.05); }
+        .diag-danger { border-color: var(--danger); color: var(--danger); background: rgba(255,61,61,0.05); }
+        .diag-fatal { border-color: #ff1744; color: #ff1744; background: rgba(255,23,68,0.1); }
+
+        /* REFERENCE TABLE */
+        .ref-table { font-size: 0.68rem; font-family: var(--mono); }
+        .ref-row {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.35rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            align-items: center;
+        }
+
+        .ref-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .ref-range { color: var(--accent); min-width: 90px; }
+        .ref-desc { color: var(--muted); }
+
+        /* SCENARIO INDICATOR */
+        .scenario-vis {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--muted);
+        }
+
+        .scenario-node {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        .scenario-line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--accent), var(--danger));
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div class="badge">Modelo Resistivo · σ = 0.34 S/m</div>
+        <h1>Simulador de <span>Riesgo Eléctrico</span></h1>
+        <p class="subtitle">// bioimpedancia humana · análisis de corriente · efectos fisiológicos</p>
+    </header>
+
+    <div class="grid">
+
+        <!-- PANEL CONTROL -->
+        <div class="panel">
+            <div class="panel-title">Parámetros de Entrada</div>
+
+            <div class="field">
+                <label>Escenario de contacto</label>
+                <select id="scenario" onchange="updateSimulation()">
+                    <option value="hand-hand">Mano → Mano</option>
+                    <option value="hand-foot">Mano → Pie</option>
+                    <option value="foot-foot">Pie → Pie</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Tensión de la fuente (V)</label>
+                <input type="number" id="voltage" value="440" oninput="updateSimulation()">
+            </div>
+
+            <hr class="divider">
+            <div class="section-label">Dimensiones del sujeto (cm)</div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Brazo Superior</span>
+                    <span class="slider-val" id="arm-sup-val">33 / 29</span>
+                </div>
+                <div class="slider-row">
+                    <span class="slider-sub">L</span>
+                    <input type="range" id="L_arm_sup" min="20" max="50" value="33" oninput="updateSimulation()">
+                    <span class="slider-sub">C</span>
+                    <input type="range" id="C_arm_sup" min="15" max="50" value="29" oninput="updateSimulation()">
+                </div>
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Brazo Inferior</span>
+                    <span class="slider-val" id="arm-inf-val">28 / 24</span>
+                </div>
+                <div class="slider-row">
+                    <span class="slider-sub">L</span>
+                    <input type="range" id="L_arm_inf" min="20" max="45" value="28" oninput="updateSimulation()">
+                    <span class="slider-sub">C</span>
+                    <input type="range" id="C_arm_inf" min="10" max="40" value="24" oninput="updateSimulation()">
+                </div>
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Torso</span>
+                    <span class="slider-val" id="torso-val">60 / 90</span>
+                </div>
+                <div class="slider-row">
+                    <span class="slider-sub">L</span>
+                    <input type="range" id="L_torso" min="40" max="80" value="60" oninput="updateSimulation()">
+                    <span class="slider-sub">C</span>
+                    <input type="range" id="C_torso" min="60" max="150" value="90" oninput="updateSimulation()">
+                </div>
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Pierna Superior</span>
+                    <span class="slider-val" id="leg-sup-val">43 / 52</span>
+                </div>
+                <div class="slider-row">
+                    <span class="slider-sub">L</span>
+                    <input type="range" id="L_leg_sup" min="30" max="60" value="43" oninput="updateSimulation()">
+                    <span class="slider-sub">C</span>
+                    <input type="range" id="C_leg_sup" min="30" max="80" value="52" oninput="updateSimulation()">
+                </div>
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Pierna Inferior</span>
+                    <span class="slider-val" id="leg-inf-val">42 / 36</span>
+                </div>
+                <div class="slider-row">
+                    <span class="slider-sub">L</span>
+                    <input type="range" id="L_leg_inf" min="30" max="60" value="42" oninput="updateSimulation()">
+                    <span class="slider-sub">C</span>
+                    <input type="range" id="C_leg_inf" min="20" max="60" value="36" oninput="updateSimulation()">
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL CUERPO -->
+        <div class="panel panel-body">
+            <div class="panel-title">Trayectoria de la Corriente</div>
+
+            <div class="svg-wrap">
+                <svg id="body-svg" viewBox="0 0 200 420" xmlns="http://www.w3.org/2000/svg">
+                    <!-- CABEZA -->
+                    <ellipse cx="100" cy="38" rx="22" ry="26" fill="#0f1d28" stroke="#1e3a4a" stroke-width="1.5"/>
+                    <!-- Ojos -->
+                    <circle cx="92" cy="35" r="3" fill="#1e3a4a"/>
+                    <circle cx="108" cy="35" r="3" fill="#1e3a4a"/>
+                    <circle cx="92" cy="35" r="1.5" fill="#00e5ff" opacity="0.4"/>
+                    <circle cx="108" cy="35" r="1.5" fill="#00e5ff" opacity="0.4"/>
+                    <!-- Boca -->
+                    <path d="M94 46 Q100 50 106 46" fill="none" stroke="#1e3a4a" stroke-width="1.2"/>
+                    <!-- Cuello -->
+                    <rect x="94" y="62" width="12" height="12" fill="#0f1d28" stroke="#1e3a4a" stroke-width="1"/>
+
+                    <!-- TORSO -->
+                    <rect id="svg-torso" x="72" y="73" width="56" height="90" rx="8"
+                          class="torso-idle"/>
+                    <!-- Costillas decorativas -->
+                    <line x1="82" y1="88" x2="118" y2="88" stroke="#1e3a4a" stroke-width="0.8" opacity="0.5"/>
+                    <line x1="82" y1="100" x2="118" y2="100" stroke="#1e3a4a" stroke-width="0.8" opacity="0.5"/>
+                    <line x1="82" y1="112" x2="118" y2="112" stroke="#1e3a4a" stroke-width="0.8" opacity="0.5"/>
+                    <line x1="82" y1="124" x2="118" y2="124" stroke="#1e3a4a" stroke-width="0.8" opacity="0.5"/>
+                    <!-- Esternón -->
+                    <line x1="100" y1="75" x2="100" y2="160" stroke="#1e3a4a" stroke-width="0.8" opacity="0.5"/>
+
+                    <!-- BRAZO IZQ SUP -->
+                    <line id="svg-arm-L-sup" x1="72" y1="82" x2="38" y2="115" class="seg seg-idle" stroke-linecap="round"/>
+                    <!-- BRAZO IZQ INF -->
+                    <line id="svg-arm-L-inf" x1="38" y1="115" x2="12" y2="160" class="seg seg-idle" stroke-linecap="round"/>
+                    <!-- Mano Izq -->
+                    <circle id="svg-hand-L" cx="10" cy="165" r="6" fill="#0f1d28" stroke="#1e3a4a" stroke-width="1.5"/>
+
+                    <!-- BRAZO DER SUP -->
+                    <line id="svg-arm-R-sup" x1="128" y1="82" x2="162" y2="115" class="seg seg-idle" stroke-linecap="round"/>
+                    <!-- BRAZO DER INF -->
+                    <line id="svg-arm-R-inf" x1="162" y1="115" x2="188" y2="160" class="seg seg-idle" stroke-linecap="round"/>
+                    <!-- Mano Der -->
+                    <circle id="svg-hand-R" cx="190" cy="165" r="6" fill="#0f1d28" stroke="#1e3a4a" stroke-width="1.5"/>
+
+                    <!-- PIERNA IZQ SUP -->
+                    <line id="svg-leg-L-sup" x1="88" y1="163" x2="78" y2="255" class="seg seg-idle" stroke-linecap="round"/>
+                    <!-- PIERNA IZQ INF -->
+                    <line id="svg-leg-L-inf" x1="78" y1="255" x2="72" y2="350" class="seg seg-idle" stroke-linecap="round"/>
+                    <!-- Pie Izq -->
+                    <ellipse id="svg-foot-L" cx="68" cy="357" rx="10" ry="5" fill="#0f1d28" stroke="#1e3a4a" stroke-width="1.5"/>
+
+                    <!-- PIERNA DER SUP -->
+                    <line id="svg-leg-R-sup" x1="112" y1="163" x2="122" y2="255" class="seg seg-idle" stroke-linecap="round"/>
+                    <!-- PIERNA DER INF -->
+                    <line id="svg-leg-R-inf" x1="122" y1="255" x2="128" y2="350" class="seg seg-idle" stroke-linecap="round"/>
+                    <!-- Pie Der -->
+                    <ellipse id="svg-foot-R" cx="132" cy="357" rx="10" ry="5" fill="#0f1d28" stroke="#1e3a4a" stroke-width="1.5"/>
+                </svg>
+            </div>
+
+            <div class="meters">
+                <div class="meter-box">
+                    <div class="meter-label">Resistencia Total</div>
+                    <div class="meter-val r" id="res-total">— Ω</div>
+                </div>
+                <div class="meter-box">
+                    <div class="meter-label">Corriente</div>
+                    <div class="meter-val i" id="current-total">— mA</div>
+                </div>
+            </div>
+
+            <!-- Tabla de segmentos -->
+            <div class="res-table" style="width:100%; margin-top:1rem;">
+                <div class="panel-title" style="margin-bottom:0.5rem;">Resistencias por Segmento</div>
+                <div id="r-row-arm-sup" class="res-row"><span class="res-row-name">Brazo sup. (×2)</span><span class="res-row-val" id="r-val-arm-sup">—</span></div>
+                <div id="r-row-arm-inf" class="res-row"><span class="res-row-name">Brazo inf. (×2)</span><span class="res-row-val" id="r-val-arm-inf">—</span></div>
+                <div id="r-row-torso" class="res-row"><span class="res-row-name">Torso</span><span class="res-row-val" id="r-val-torso">—</span></div>
+                <div id="r-row-leg-sup" class="res-row"><span class="res-row-name">Pierna sup.</span><span class="res-row-val" id="r-val-leg-sup">—</span></div>
+                <div id="r-row-leg-inf" class="res-row"><span class="res-row-name">Pierna inf.</span><span class="res-row-val" id="r-val-leg-inf">—</span></div>
+            </div>
+        </div>
+
+        <!-- PANEL DIAGNÓSTICO -->
+        <div class="panel">
+            <div class="panel-title">Análisis Fisiológico</div>
+
+            <div id="diag-card" class="diag-card diag-ok">
+                <span id="diag-icon" class="diag-icon">✅</span>
+                <div id="diag-title" class="diag-title">Seguro</div>
+                <div id="diag-desc" class="diag-desc">Por debajo del umbral de percepción.</div>
+            </div>
+
+            <!-- Barra de riesgo -->
+            <div style="margin-bottom:1.25rem;">
+                <div style="font-size:0.6rem;font-family:var(--mono);color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.4rem;">
+                    Nivel de Riesgo
+                </div>
+                <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+                    <div id="risk-bar" style="height:100%;width:0%;background:var(--ok);transition:width 0.5s ease, background 0.5s ease;border-radius:3px;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:0.3rem;font-size:0.55rem;font-family:var(--mono);color:var(--muted);">
+                    <span>0</span><span>1mA</span><span>10mA</span><span>30mA</span><span>75mA</span><span>>4A</span>
+                </div>
+            </div>
+
+            <hr class="divider">
+            <div class="panel-title" style="margin-bottom:0.75rem;">Referencia Técnica IEC 60479</div>
+
+            <div class="ref-table">
+                <div class="ref-row">
+                    <div class="ref-dot" style="background:var(--ok);box-shadow:0 0 4px var(--ok)"></div>
+                    <span class="ref-range">&lt; 1 mA</span>
+                    <span class="ref-desc">Imperceptible</span>
+                </div>
+                <div class="ref-row">
+                    <div class="ref-dot" style="background:#76ff03;box-shadow:0 0 4px #76ff03"></div>
+                    <span class="ref-range">1 – 10 mA</span>
+                    <span class="ref-desc">Sensación dolorosa</span>
+                </div>
+                <div class="ref-row">
+                    <div class="ref-dot" style="background:var(--warn);box-shadow:0 0 4px var(--warn)"></div>
+                    <span class="ref-range">10 – 30 mA</span>
+                    <span class="ref-desc">Parálisis muscular</span>
+                </div>
+                <div class="ref-row">
+                    <div class="ref-dot" style="background:#ff6d00;box-shadow:0 0 4px #ff6d00"></div>
+                    <span class="ref-range">30 – 75 mA</span>
+                    <span class="ref-desc">Parálisis respiratoria</span>
+                </div>
+                <div class="ref-row">
+                    <div class="ref-dot" style="background:var(--danger);box-shadow:0 0 4px var(--danger)"></div>
+                    <span class="ref-range">75 – 4000 mA</span>
+                    <span class="ref-desc">Fibrilación ventricular</span>
+                </div>
+                <div class="ref-row">
+                    <div class="ref-dot" style="background:#e040fb;box-shadow:0 0 4px #e040fb"></div>
+                    <span class="ref-range">&gt; 4 A</span>
+                    <span class="ref-desc">Paro cardíaco / quemaduras</span>
+                </div>
+            </div>
+
+            <hr class="divider">
+            <div style="font-size:0.6rem;font-family:var(--mono);color:var(--muted);line-height:1.8;">
+                <div>σ_músculo = 0.34 S/m</div>
+                <div>R = L / (σ · A)</div>
+                <div>A = C² / 4π &nbsp;(sección circular)</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const SIGMA = 0.34;
+
+    function calcR(L_cm, C_cm) {
+        const L = L_cm / 100;
+        const C = C_cm / 100;
+        const A = (C * C) / (4 * Math.PI);
+        if (A === 0) return Infinity;
+        return L / (SIGMA * A);
+    }
+
+    function fmt(r) {
+        if (r > 9999) return (r/1000).toFixed(1) + ' kΩ';
+        return Math.round(r) + ' Ω';
+    }
+
+    function getSeverityClass(ma) {
+        if (ma < 1) return 'safe';
+        if (ma < 10) return 'warn';
+        if (ma < 30) return 'orange';
+        if (ma < 75) return 'danger';
+        return 'fatal';
+    }
+
+    function updateSimulation() {
+        const v   = parseFloat(document.getElementById('voltage').value) || 0;
+        const l_as = +document.getElementById('L_arm_sup').value;
+        const c_as = +document.getElementById('C_arm_sup').value;
+        const l_ai = +document.getElementById('L_arm_inf').value;
+        const c_ai = +document.getElementById('C_arm_inf').value;
+        const l_t  = +document.getElementById('L_torso').value;
+        const c_t  = +document.getElementById('C_torso').value;
+        const l_ps = +document.getElementById('L_leg_sup').value;
+        const c_ps = +document.getElementById('C_leg_sup').value;
+        const l_pi = +document.getElementById('L_leg_inf').value;
+        const c_pi = +document.getElementById('C_leg_inf').value;
+
+        document.getElementById('arm-sup-val').textContent = `${l_as} / ${c_as}`;
+        document.getElementById('arm-inf-val').textContent = `${l_ai} / ${c_ai}`;
+        document.getElementById('torso-val').textContent   = `${l_t} / ${c_t}`;
+        document.getElementById('leg-sup-val').textContent = `${l_ps} / ${c_ps}`;
+        document.getElementById('leg-inf-val').textContent = `${l_pi} / ${c_pi}`;
+
+        const r_as = calcR(l_as, c_as);
+        const r_ai = calcR(l_ai, c_ai);
+        const r_t  = calcR(l_t, c_t);
+        const r_ps = calcR(l_ps, c_ps);
+        const r_pi = calcR(l_pi, c_pi);
+
+        document.getElementById('r-val-arm-sup').textContent = fmt(r_as);
+        document.getElementById('r-val-arm-inf').textContent = fmt(r_ai);
+        document.getElementById('r-val-torso').textContent   = fmt(r_t);
+        document.getElementById('r-val-leg-sup').textContent = fmt(r_ps);
+        document.getElementById('r-val-leg-inf').textContent = fmt(r_pi);
+
+        const scenario = document.getElementById('scenario').value;
+        let r_total = 0;
+        let activeSegs = [];
+        let activeRows = [];
+
+        // Reset all
+        ['svg-arm-L-sup','svg-arm-L-inf','svg-arm-R-sup','svg-arm-R-inf',
+         'svg-leg-L-sup','svg-leg-L-inf','svg-leg-R-sup','svg-leg-R-inf'].forEach(id => {
+            const el = document.getElementById(id);
+            el.className.baseVal = 'seg seg-idle';
+        });
+        ['svg-hand-L','svg-hand-R','svg-foot-L','svg-foot-R'].forEach(id => {
+            const el = document.getElementById(id);
+            el.setAttribute('stroke', '#1e3a4a');
+            el.style.filter = '';
+        });
+        document.getElementById('svg-torso').className.baseVal = 'torso-idle';
+        ['r-row-arm-sup','r-row-arm-inf','r-row-torso','r-row-leg-sup','r-row-leg-inf'].forEach(id => {
+            document.getElementById(id).classList.remove('active');
+        });
+
+        if (scenario === 'hand-hand') {
+            r_total = r_ai + r_as + r_t + r_as + r_ai;
+            activeSegs = ['svg-arm-L-inf','svg-arm-L-sup','svg-arm-R-sup','svg-arm-R-inf'];
+            activeRows = ['r-row-arm-sup','r-row-arm-inf','r-row-torso'];
+            highlightEndpoints(['svg-hand-L','svg-hand-R'], []);
+        } else if (scenario === 'hand-foot') {
+            r_total = r_ai + r_as + r_t + r_ps + r_pi;
+            activeSegs = ['svg-arm-R-inf','svg-arm-R-sup','svg-leg-L-sup','svg-leg-L-inf'];
+            activeRows = ['r-row-arm-sup','r-row-arm-inf','r-row-torso','r-row-leg-sup','r-row-leg-inf'];
+            highlightEndpoints(['svg-hand-R'], ['svg-foot-L']);
+        } else {
+            r_total = r_pi + r_ps + r_t * 0.1 + r_ps + r_pi;
+            activeSegs = ['svg-leg-L-inf','svg-leg-L-sup','svg-leg-R-sup','svg-leg-R-inf'];
+            activeRows = ['r-row-leg-sup','r-row-leg-inf'];
+            highlightEndpoints([], ['svg-foot-L','svg-foot-R']);
+        }
+
+        document.getElementById('svg-torso').className.baseVal =
+            (scenario !== 'foot-foot') ? 'torso-active' : 'torso-idle';
+
+        const ma = (v / r_total) * 1000;
+        const sevClass = getSeverityClass(ma);
+        const colorMap = { safe: 'var(--ok)', warn: '#76ff03', orange: '#ff6d00', danger: 'var(--danger)', fatal: '#e040fb' };
+        const segColor = colorMap[sevClass];
+
+        activeSegs.forEach(id => {
+            const el = document.getElementById(id);
+            el.className.baseVal = `seg seg-active`;
+            el.style.stroke = segColor;
+            el.style.filter = `drop-shadow(0 0 6px ${segColor})`;
+        });
+
+        activeRows.forEach(id => document.getElementById(id).classList.add('active'));
+
+        document.getElementById('res-total').textContent = fmt(r_total);
+        document.getElementById('current-total').textContent = isFinite(ma) ? Math.round(ma) + ' mA' : '∞ mA';
+
+        updateDiagnosis(ma, sevClass);
+        updateRiskBar(ma);
+    }
+
+    function highlightEndpoints(handIds, footIds) {
+        const c = 'var(--accent)';
+        handIds.forEach(id => {
+            const el = document.getElementById(id);
+            el.setAttribute('stroke', c);
+            el.style.filter = `drop-shadow(0 0 8px ${c})`;
+        });
+        footIds.forEach(id => {
+            const el = document.getElementById(id);
+            el.setAttribute('stroke', c);
+            el.style.filter = `drop-shadow(0 0 8px ${c})`;
+        });
+    }
+
+    function updateRiskBar(ma) {
+        // Log scale: 0 to 4000 mA mapped to 0–100%
+        const pct = Math.min(100, (Math.log10(Math.max(ma, 0.01) + 1) / Math.log10(4001)) * 100);
+        const bar = document.getElementById('risk-bar');
+        bar.style.width = pct + '%';
+        if (ma < 1)        bar.style.background = 'var(--ok)';
+        else if (ma < 10)  bar.style.background = '#76ff03';
+        else if (ma < 30)  bar.style.background = 'var(--warn)';
+        else if (ma < 75)  bar.style.background = '#ff6d00';
+        else if (ma < 4000) bar.style.background = 'var(--danger)';
+        else               bar.style.background = '#e040fb';
+    }
+
+    function updateDiagnosis(ma, sev) {
+        const card = document.getElementById('diag-card');
+        const icon = document.getElementById('diag-icon');
+        const title = document.getElementById('diag-title');
+        const desc = document.getElementById('diag-desc');
+
+        card.className = 'diag-card';
+        const configs = {
+            safe:   ['diag-ok',     '✅', 'Seguro',               'Corriente por debajo del umbral de percepción.'],
+            warn:   ['diag-warn',   '⚠️', 'Dolor / Susto',        'Sensación dolorosa fuerte. Control muscular mantenido.'],
+            orange: ['diag-orange', '⚡', 'Parálisis Muscular',   'No puede soltar la fuente. Riesgo de asfixia prolongada.'],
+            danger: ['diag-danger', '🚑', 'Par. Respiratoria',    'Detención respiratoria. Frecuentemente fatal.'],
+            fatal:  ['diag-fatal',  '💀', 'Fibrilación / Paro',   'Riesgo máximo. Corazón pierde ritmo funcional. Quemaduras.'],
+        };
+
+        const [cls, ic, tx, dx] = configs[sev];
+        card.classList.add(cls);
+        icon.textContent = ic;
+        title.textContent = tx;
+        desc.textContent = dx;
+    }
+
+    window.onload = updateSimulation;
+</script>
+</body>
+</html>
